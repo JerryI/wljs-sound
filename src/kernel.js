@@ -285,28 +285,25 @@ fast.List.update = fast.List;
 
 core.PCMPlayer = async (args, env) => {
   let initial;
-  
-  try {
-    if (server.kernel)
-        if (server.kernel.socket)
-            if (!server.kernel.socket.isFakeSocket)
-                initial = await interpretate(args[0], {...env});
-  } catch (error) {
-    console.error(error);
-  };
 
 
   const opts = await core._getRules(args, env);
   let enc;
 
+  //console.warn(args);
+  //console.warn(args.length - Object.keys(opts).length);
+
   if (args.length - Object.keys(opts).length > 2) {
+    console.warn('Using stored offline');
+    interpretate(args[0], {...env});
     initial = await interpretate(args[1], {...env, context:fast});
     enc = await interpretate(args[2], env);
   } else {
+    initial = await interpretate(args[0], {...env});
     enc = await interpretate(args[1], env);
   }
 
-  console.warn(enc);
+  console.warn(initial);
 
   if (!('AutoPlay' in opts)) opts.AutoPlay = true;
   if (!('GUI' in opts)) opts.GUI = true;
