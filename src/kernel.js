@@ -269,9 +269,9 @@ FUPCMPlayer.prototype.flush = function() {
 };
 
 const rates = {
-    "SignedInteger16": {type: '16bitInt', format: Int16Array},
-    "SignedInteger8": {type: '8bitInt', format: Int8Array},
-    "SignedInteger32": {type: '32bitInt', format: Int32Array}   
+    SignedInteger16: {type: '16bitInt', format: Int16Array},
+    SignedInteger8: {type: '8bitInt', format: Int8Array},
+    SignedInteger32: {type: '32bitInt', format: Int32Array}   
 }
 
 core.SampleRate = () => "SampleRate"
@@ -284,15 +284,37 @@ fast.List = (args, env) => {
 fast.List.update = fast.List;
 
 core.PCMPlayer = async (args, env) => {
-  const initial = await interpretate(args[0], {...env, context: fast});
+  let initial;
+  
+  try {
+    if (server.kernel)
+        if (server.kernel.socket)
+            if (!server.kernel.socket.isFakeSocket)
+                initial = await interpretate(args[0], {...env});
+  } catch (error) {
+    console.error(error);
+  };
+
+
   const opts = await core._getRules(args, env);
+  let enc;
 
-  let encoding = rates["SignedInteger16"];
-
-  if (args.length - (Object.keys(opts).length) > 1) {
-    encoding = await interpretate(args[1], env);
-    encoding = rates[encoding];
+  if (args.length - Object.keys(opts).length > 2) {
+    initial = await interpretate(args[1], {...env, context:fast});
+    enc = await interpretate(args[2], env);
+  } else {
+    enc = await interpretate(args[1], env);
   }
+
+  console.warn(enc);
+
+  if (!('AutoPlay' in opts)) opts.AutoPlay = true;
+  if (!('GUI' in opts)) opts.GUI = true;
+  if (!('SampleRate' in opts)) opts.SampleRate = 44100;
+
+  let encoding = rates[enc];
+  console.warn(encoding);
+
 
   if (opts.FlushingTime) opts.FlushingTime = opts.FlushingTime / 1000.0;
 
@@ -300,7 +322,7 @@ core.PCMPlayer = async (args, env) => {
 
   if (opts.Event) {
     call = (time) => {
-        server.kernel.emitt(opts.Event, time);
+        server.kernel.emitt(opts.Event, time, 'More');
     }
   }
 
@@ -319,28 +341,65 @@ core.PCMPlayer = async (args, env) => {
  env.local.player = player;
 
   //.feed(pcm_data);
+let willPlay = false;
 
-  if (initial.length > 1) {
-    player.feed(new encoding.format(initial));
+  if (!env.noAutoplay && opts.AutoPlay) { 
+    willPlay = true;
+    if (initial.length > 1) {
+        player.feed(new encoding.format(initial));
+    } else {
+        if (opts.Event) call(0);
+    }
   }
 
   if (opts.NoGUI) return; 
+  if (!opts.GUI) return; 
   env.element.classList.add(...('sm-controls cursor-default rounded-md 0 py-1 px-2 bg-gray-100 text-left text-gray-500 ring-1 ring-inset ring-gray-400 text-xs'.split(' ')));
   
 
   if (initial.length) {
     const uid = uuidv4();
+    const length = opts.FullLength || initial.length;
+
+    let playClass = 'hidden', stopClass = '';
+    if (!willPlay) {
+        stopClass = 'hidden';
+        playClass = '';
+    }
 
     env.element.innerHTML = `
     <svg class="w-4 h-4 text-gray-500 inline-block mt-auto mb-auto" viewBox="0 0 24 24" fill="none">
 <path class="group-hover:opacity-0" d="M3 11V13M6 10V14M9 11V13M12 9
 V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M3 11V13M6 8V16M9 10V14M12 7V17M15 4V20M18 9V15M21 11V13" class="opacity-0 group-hover:opacity-100" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg> <span id="${uid}-text" class="leading-normal pl-1">${initial.length/(opts.SampleRate || 44100)} sec</span>`;
-    
-    env.element.addEventListener('click', () => {
+</svg> <button id="${uid}-stop" class="px-1 ${stopClass}"><svg fill="currentColor" class="w-3 h-3" viewBox="0 0 256 256"> <path d="M48.227 65.473c0-9.183 7.096-16.997 16.762-17.51 9.666-.513 116.887-.487 125.094-.487 8.207 0 17.917 9.212 17.917 17.71 0 8.499.98 117.936.49 126.609-.49 8.673-9.635 15.995-17.011 15.995-7.377 0-117.127-.327-126.341-.327-9.214 0-17.472-7.793-17.192-16.1.28-8.306.28-116.708.28-125.89zm15.951 4.684c-.153 3.953 0 112.665 0 116.19 0 3.524 3.115 5.959 7.236 6.156 4.12.198 112.165.288 114.852 0 2.686-.287 5.811-2.073 5.932-5.456.12-3.383-.609-113.865-.609-116.89 0-3.025-3.358-5.84-6.02-5.924-2.662-.085-110.503 0-114.155 0-3.652 0-7.083 1.972-7.236 5.924z" fill-rule="evenodd"/>
+</svg></button>
+<button id="${uid}-play" class="px-1 ${playClass}"><svg fill="currentColor" class="w-3 h-3" viewBox="0 0 24 24"><path d="M16.6582 9.28638C18.098 10.1862 18.8178 10.6361 19.0647 11.2122C19.2803 11.7152 19.2803 12.2847 19.0647 12.7878C18.8178 13.3638 18.098 13.8137 16.6582 14.7136L9.896 18.94C8.29805 19.9387 7.49907 20.4381 6.83973 20.385C6.26501 20.3388 5.73818 20.0469 5.3944 19.584C5 19.053 5 18.1108 5 16.2264V7.77357C5 5.88919 5 4.94701 5.3944 4.41598C5.73818 3.9531 6.26501 3.66111 6.83973 3.6149C7.49907 3.5619 8.29805 4.06126 9.896 5.05998L16.6582 9.28638Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button><span id="${uid}-text" class="leading-normal pl-1">${(length/(opts.SampleRate )).toFixed(2)} sec</span>`;
+
+    const playButton = document.getElementById(uid+'-play');
+    const stopButton = document.getElementById(uid+'-stop');
+
+    env.local.prevState = false;
+
+    playButton.addEventListener('click', () => {
+        if (env.local.prevState) return;
+        playButton.classList.add('hidden');
+        stopButton.classList.remove('hidden');
         env.local.state(true);
         player.feed(new encoding.format(initial));
+    });
+
+    stopButton.addEventListener('click', () => {
+        
+        stopButton.classList.add('hidden');
+        player.interrupt();
+            if (opts.Event) {
+                server.kernel.emitt(opts.Event, 'True', 'Stop');
+
+              }
+              env.local.state(false);
+              playButton.classList.remove('hidden');              
+        
     });
 
     const text = document.getElementById(uid + '-text');
@@ -351,7 +410,8 @@ V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-l
         if (state) {
             text.innerText = 'Playing';
         } else {
-            text.innerText = 'No buffer';
+            text.innerText = 'Stopped';
+            //playButton.classList.remove('hidden');
         }
 
         env.local.prevState = state;
@@ -398,10 +458,21 @@ core.PCMPlayer.destroy = (args, env) => {
   env.local.player.destroy();
 }
 
+const sound = {
+    name: 'Sound'
+};
 
-core.Sound = async (args, env) => {  
+//like Graphics it has primitives
+
+interpretate.contextExpand(sound);
+
+//TODO: Implement those
+sound.SoundNote = async (args, env) => {}
+sound.SampledSoundFunction = async (args, env) => {}
+
+sound.Sound = async (args, env) => {  
     const object = await interpretate(args[0], {
-        ...env
+        ...env, context:sound
     });
   
   
@@ -434,13 +505,13 @@ core.Sound = async (args, env) => {
     //
   }
 
-  core.Sound.destroy = (args, env) => {
+  sound.Sound.destroy = (args, env) => {
     env.local.player.destroy();
   }
   
   
   
-  core.SampledSoundList = async (args, env) => {
+  sound.SampledSoundList = async (args, env) => {
     //assume 32bit float
 
     const data = await interpretate(args[0], {...env, context: fast});
