@@ -28,6 +28,10 @@ FUPCMPlayer.prototype.init = function(option) {
         sampleRate: 16000,
     };
     this.option = Object.assign({}, defaults, option);
+    this.callback = this.option.callback;
+    this.callbackTimeAhead = this.option.callbackTimeAhead;
+    this.callbackOnEnd = this.option.callbackOnEnd;
+
     this.flush = this.flush.bind(this);
     this.maxValue = this.getMaxValue();
     this.typedArray = this.getTypedArray();
@@ -153,16 +157,38 @@ FUPCMPlayer.prototype.interrupt = function(cb) {
 // (即时超过超时时间也)确保会触发
 FUPCMPlayer.prototype.ensuredSetTimeout = (function() {
     let startTimestamp;
-    return function(fn, timeout) {
+    return function(fn, timeout, fn2, timeout2) {
+
+
         startTimestamp = performance.now();
-        const checker = (timestamp) => {
-            if(timestamp - startTimestamp >= timeout) {
-                this.timeout = undefined;
-                fn();
-            } else {
-                this.timeout = requestAnimationFrame(checker);
-            }
-        };
+        let checker;
+        
+        if (fn2) {
+            let done = false;
+
+            checker = (timestamp) => {
+                if(timestamp - startTimestamp >= timeout2 && !done) {
+                    done = true;
+                    fn2(timestamp);
+                }
+
+                if(timestamp - startTimestamp >= timeout) {
+                    this.timeout = undefined;
+                    fn();
+                } else {
+                    this.timeout = requestAnimationFrame(checker);
+                }
+            };
+        } else {
+            checker = (timestamp) => {
+                if (timestamp - startTimestamp >= timeout) {
+                    this.timeout = undefined;
+                    fn();
+                } else {
+                    this.timeout = requestAnimationFrame(checker);
+                }
+            };            
+        }
         this.timeout = requestAnimationFrame(checker);
     }
 })();
@@ -175,7 +201,16 @@ FUPCMPlayer.prototype.ensuredClearTimeout = function() {
 };
 
 FUPCMPlayer.prototype.flush = function() {
-    if (!this.samples.length) return;
+    console.log('flush');
+
+    if (!this.samples.length) {
+        console.warn('End');
+        if (this.callbackOnEnd) {
+            console.warn('End');
+            this.callbackOnEnd(false);
+        }
+        return;
+    }
     
     var bufferSource = this.audioCtx.createBufferSource(),
         length = this.samples.length / this.option.channels,
@@ -221,15 +256,9 @@ FUPCMPlayer.prototype.flush = function() {
     
     if(!this.flag_request_stop) {
         const nextTimeGap = (this.startTime - this.audioCtx.currentTime)*1000;
-
-        // Schedule callback if defined
-        if (this.callback && nextTimeGap > this.callbackOffset) {
-            setTimeout(() => {
-                this.callback();
-            }, nextTimeGap - this.callbackOffset);
-        }        
-
-       this.ensuredSetTimeout(this.flush, nextTimeGap - 50);
+       
+        this.ensuredSetTimeout(this.flush, nextTimeGap - 50, this.callback, nextTimeGap - this.callbackTimeAhead - 50);
+        
     } else {
         this.flag_request_stop = false;
         bufferSource.onended = () => {
@@ -267,28 +296,101 @@ core.PCMPlayer = async (args, env) => {
 
   if (opts.FlushingTime) opts.FlushingTime = opts.FlushingTime / 1000.0;
 
+  let call;
+
+  if (opts.Event) {
+    call = (time) => {
+        server.kernel.emitt(opts.Event, time);
+    }
+  }
+
+  env.local.state = () => {};
+  
   var player = new FUPCMPlayer({
     encoding: encoding.type,
     channels: 1,
-    sampleRate: opts.SampleRate || 44000,
-    flushingTime: opts.FlushingTime || 2000
+    sampleRate: opts.SampleRate || 44100,
+    callback: call,
+    callbackOnEnd: (time) => env.local.state(time),
+    callbackTimeAhead: opts.TimeAhead || 200
  });
 
  env.local.encoding = encoding.format;
  env.local.player = player;
+
   //.feed(pcm_data);
 
   if (initial.length > 1) {
-    player.feed(new encoding.format(data));
+    player.feed(new encoding.format(initial));
   }
+
+  if (opts.NoGUI) return; 
+  env.element.classList.add(...('sm-controls cursor-default rounded-md 0 py-1 px-2 bg-gray-100 text-left text-gray-500 ring-1 ring-inset ring-gray-400 text-xs'.split(' ')));
   
+
+  if (initial.length) {
+    const uid = uuidv4();
+
+    env.element.innerHTML = `
+    <svg class="w-4 h-4 text-gray-500 inline-block mt-auto mb-auto" viewBox="0 0 24 24" fill="none">
+<path class="group-hover:opacity-0" d="M3 11V13M6 10V14M9 11V13M12 9
+V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M3 11V13M6 8V16M9 10V14M12 7V17M15 4V20M18 9V15M21 11V13" class="opacity-0 group-hover:opacity-100" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> <span id="${uid}-text" class="leading-normal pl-1">${initial.length/(opts.SampleRate || 44100)} sec</span>`;
+    
+    env.element.addEventListener('click', () => {
+        env.local.state(true);
+        player.feed(new encoding.format(initial));
+    });
+
+    const text = document.getElementById(uid + '-text');
+    
+    env.local.state = (state = false) => {
+        if (env.local.prevState == state) return;
+
+        if (state) {
+            text.innerText = 'Playing';
+        } else {
+            text.innerText = 'No buffer';
+        }
+
+        env.local.prevState = state;
+    }    
+
+  } else {
+    const uid = uuidv4();
+    env.element.innerHTML = `
+    <svg class="w-4 h-4 text-gray-500 inline-block mt-auto mb-auto" viewBox="0 0 24 24" fill="none">
+<path id="${uid}-ico" d="M3 11V13M6 8V16M9 10V14M12 7V17M15 4V20M18 9V15M21 11V13" class="text-red-400" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> <span class="leading-normal pl-1" id="${uid}-text">No buffer</span>`;
+    
+    const ico = document.getElementById(uid + '-ico');
+    const text = document.getElementById(uid + '-text');
+    
+    env.local.state = (state = false) => {
+        if (env.local.prevState == state) return;
+
+        if (state) {
+            ico.classList.remove('text-red-400');
+            ico.classList.add('text-green-400');
+            text.innerText = 'Playing';
+        } else {
+            ico.classList.add('text-red-400');
+            ico.classList.remove('text-green-400');
+            text.innerText = 'No buffer';
+        }
+
+        env.local.prevState = state;
+    }
+  }
+
 }
 
 
 
 core.PCMPlayer.update = async (args, env) => {
   const data = await interpretate(args[0], {...env, context: fast});
-
+  env.local.state(true);
   env.local.player.feed(new env.local.encoding(data));
 }
 
@@ -297,12 +399,9 @@ core.PCMPlayer.destroy = (args, env) => {
 }
 
 
-core.Sound = async (args, env) => {
-    var ctx = new AudioContext();
-  
+core.Sound = async (args, env) => {  
     const object = await interpretate(args[0], {
-        ...env,
-        ctx: ctx
+        ...env
     });
   
   
@@ -315,62 +414,45 @@ core.Sound = async (args, env) => {
      <path d="M3 11V13M6 8V16M9 10V14M12 7V17M15 4V20M18 9V15M21 11V13" class="opacity-0 group-hover:opacity-100" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
      </svg> <span class="leading-normal pl-1">${object.length} sec</span>`;
   
-    const targetRate = ctx.sampleRate;
+    //const targetRate = ctx.sampleRate;
+
+    const player = new FUPCMPlayer({
+        encoding: object.type,
+        channels: 1,
+        sampleRate: object.rate,
+        callback: console.log,
+        callbackTimeAhead: 50
+     });
+
+     env.local.player = player;
   
     env.element.addEventListener('click', () => {
-  
-  
-        const ratio = Math.floor(targetRate / object.rate);
-  
-        const myArrayBuffer = ctx.createBuffer(
-  
-            2,
-            ratio * object.data.length,
-            ctx.sampleRate,
-        );
-  
-        // Fill the buffer with white noise;
-        //just random values between -1.0 and 1.0
-        for (let channel = 0; channel < myArrayBuffer.numberOfChannels; channel++) {
-            // This gives us the actual ArrayBuffer that contains the data
-            const nowBuffering = myArrayBuffer.getChannelData(channel);
-            for (let i = 0; i < object.data.length; i++) {
-                // Math.random() is in [0; 1.0]
-                // audio needs to be in [-1.0; 1.0]
-                for (let k = 0; k < ratio; ++k)
-                    nowBuffering[i * ratio + k] = object.data[i];
-            }
-        }
-  
-        // Get an AudioBufferSourceNode.
-        // This is the AudioNode to use when we want to play an AudioBuffer
-        const source = ctx.createBufferSource();
-        // set the buffer in the AudioBufferSourceNode
-        source.buffer = myArrayBuffer;
-  
-        source.connect(ctx.destination);
-        source.start();
+        player.feed(object.data);
     })
     // start the source playing
-    env.element.click();
+    //env.element.click();
     //
+  }
+
+  core.Sound.destroy = (args, env) => {
+    env.local.player.destroy();
   }
   
   
   
   core.SampledSoundList = async (args, env) => {
-    const data = await interpretate(args[0], env);
+    //assume 32bit float
+
+    const data = await interpretate(args[0], {...env, context: fast});
     const rate = await interpretate(args[1], env);
   
-    const targetRate = env.ctx.sampleRate;
-  
-    // connect the AudioBufferSourceNode to the
-    // destination so we can hear the sound
+    
     const length = data.length / rate;
   
     return {
-        data: data,
+        data: new Float32Array(data),
         rate: rate,
+        type: '32bitFloat',
         length: length
     };
   }
