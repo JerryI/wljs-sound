@@ -51,6 +51,8 @@ AudioWrapperBox[a_Audio, form_] := With[{
     data = extractChannelTyped[a, "SignedInteger16"],
     uid = CreateUUID[]
 },
+    AppendTo[garbage, Hold[a] ]; (* prvent form garbage collecting *)
+    
     If[ByteCount[data] > 1.0 1024 1024,
         LeakyModule[{
             chunks, index, Global`buffer, partLength = Ceiling[Length[data] / (ByteCount[data] / (1.0 1024 1024))],
@@ -99,12 +101,15 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
     data = extractChannelTyped[a, "SignedInteger16"],
     uid = CreateUUID[]
 },
+    AppendTo[garbage, Hold[a] ]; (* prvent form garbage collecting *)
+
     If[ByteCount[data] > 1.0 1024 1024,
         LeakyModule[{
             chunks, index, Global`buffer, partLength = Ceiling[Length[data] / (ByteCount[data] / (1.0 1024 1024))],
             skipNext = False
         },
             AppendTo[garbage, Hold[Global`buffer] ];
+            
             index = partLength;
             chunks = data;
             Global`buffer = Take[chunks, partLength];
