@@ -272,14 +272,14 @@ const rates = {
     SignedInteger16: {type: '16bitInt', format: Int16Array},
     SignedInteger8: {type: '8bitInt', format: Int8Array},
     SignedInteger32: {type: '32bitInt', format: Int32Array}   
-}
+};
 
-core.SampleRate = () => "SampleRate"
+core.SampleRate = () => "SampleRate";
 
 const fast = {};
 fast.List = (args, env) => {
   return args.map((a) => interpretate(a, env))
-}
+};
 
 fast.List.update = fast.List;
 
@@ -320,7 +320,7 @@ core.PCMPlayer = async (args, env) => {
   if (opts.Event) {
     call = (time) => {
         server.kernel.emitt(opts.Event, time, 'More');
-    }
+    };
   }
 
   env.local.state = () => {};
@@ -412,7 +412,7 @@ V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-l
         }
 
         env.local.prevState = state;
-    }    
+    };    
 
   } else {
     const uid = uuidv4();
@@ -438,10 +438,10 @@ V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-l
         }
 
         env.local.prevState = state;
-    }
+    };
   }
 
-}
+};
 
 
 
@@ -449,11 +449,11 @@ core.PCMPlayer.update = async (args, env) => {
   const data = await interpretate(args[0], {...env, context: fast});
   env.local.state(true);
   env.local.player.feed(new env.local.encoding(data));
-}
+};
 
 core.PCMPlayer.destroy = (args, env) => {
   env.local.player.destroy();
-}
+};
 
 const sound = {
     name: 'Sound'
@@ -486,11 +486,10 @@ sound.SoundNote = async (args, env) => {
             console.warn(note);
             //note = Note.transpose('C4', [note, 0]);
             throw 'Not supported!';
-            console.warn(note);
         }
       
         env.synth.triggerAttackRelease(note, duration, env.now);
-    }
+    };
 
     if (Array.isArray(notes)) {
         notes.map(makeNote);
@@ -499,10 +498,10 @@ sound.SoundNote = async (args, env) => {
     }
 
     env.now += 0.5;
-}
+};
 sound.SampledSoundFunction = async (args, env) => {
 
-}
+};
 
 let Tone;
 
@@ -515,10 +514,9 @@ function isAudioBuffer (buffer) {
 	// && buffer.copyToChannel
 	// && buffer.copyFromChannel
 	&& typeof buffer.duration === 'number'
-};
-
+}
 sound.Sound = async (args, env) => {  
-    if (!Tone) Tone = (await import('tone'));
+    if (!Tone) Tone = (await import('./index-71264810.js'));
 
     const object = await interpretate(args[0], {
         ...env, context:sound, Tone: Tone, hold: true
@@ -564,11 +562,11 @@ sound.Sound = async (args, env) => {
         }
     });
         
-  }
+  };
 
   sound.Sound.destroy = (args, env) => {
     //env.local.player.destroy();
-  }
+  };
   
   
   
@@ -580,10 +578,10 @@ sound.Sound = async (args, env) => {
   
     //console.log(data);
     
-    const length = data.length / rate;
+    data.length / rate;
     const buffer = env.Tone.context.createBuffer(1, data.length, rate);
     buffer.copyToChannel(new Float32Array(data), 0);
     //console.log(buffer.getChannelData(0)[110]);
 
     return buffer;
-}
+};
