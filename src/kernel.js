@@ -465,7 +465,7 @@ interpretate.contextExpand(sound);
 
 const isCharDigit = n => n < 10;
 
-
+const halftonescale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 //TODO: Implement those
 sound.SoundNote = async (args, env) => {
     if (env.hold) return (env) => {
@@ -473,6 +473,7 @@ sound.SoundNote = async (args, env) => {
     };
     
     let notes = await interpretate(args[0], env);
+    //console.warn(notes);
 
     let duration = (await interpretate(args[1], env));
     if (!duration) duration = '8n';    
@@ -482,6 +483,12 @@ sound.SoundNote = async (args, env) => {
         
         if (typeof note == 'string') {
             if (!isCharDigit(note.charAt(note.length - 1))) note = note + '4';
+        } else if (typeof note == 'number') {
+            //console.log(note);
+            //console.log((note) % halftonescale.length);
+            note = (halftonescale[Math.abs((note) % halftonescale.length)] + String(4 + Math.round((note - ((note) % halftonescale.length))/7.0)))
+            
+            
         } else {
             console.warn(note);
             //note = Note.transpose('C4', [note, 0]);
