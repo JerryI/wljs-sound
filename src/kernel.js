@@ -495,8 +495,13 @@ sound.SoundNote = async (args, env) => {
             throw 'Not supported!';
             console.warn(note);
         }
-      
-        env.synth.triggerAttackRelease(note, duration, env.now);
+        if (Array.isArray(duration)) {
+            env.synth.triggerAttackRelease(note, duration[1]-duration[0], duration[0]);
+            console.log(duration[1]-duration[0]);
+        } else {
+            env.synth.triggerAttackRelease(note, duration, env.now);
+        }
+        
     }
 
     if (Array.isArray(notes)) {
@@ -553,7 +558,13 @@ sound.Sound = async (args, env) => {
 
     env.element.addEventListener('click', async () => {
         console.log('Play!');
-        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+
+        
+        if (!env.local.synth) env.local.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        env.local.synth.releaseAll();
+        const synth = env.local.synth;
+
+        //const synth = new Tone.PolySynth(Tone.Synth).toDestination();
         const now = Tone.now();
         env.synth = synth;
         env.now = now;
