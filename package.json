@@ -12,7 +12,9 @@
         "minjs": "dist/kernel.min.js",
         "js": "dist/kernel.js",
         "priority": 800,
-        "category": "Sound"
+        "category": "Sound",
+        "cellExportRequired": true,
+        "figureExportRequired": true
     },
     "repository": {
         "type": "git",
