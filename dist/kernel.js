@@ -455,6 +455,8 @@ core.PCMPlayer.destroy = (args, env) => {
   env.local.player.destroy();
 };
 
+core.PCMPlayer.virtual = true;
+
 const sound = {
     name: 'Sound'
 };
