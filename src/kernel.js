@@ -303,7 +303,7 @@ core.PCMPlayer = async (args, env) => {
     enc = await interpretate(args[1], env);
   }
 
-  console.warn(initial);
+  //console.warn(initial);
 
   if (!('AutoPlay' in opts)) opts.AutoPlay = true;
   if (!('GUI' in opts)) opts.GUI = true;
@@ -345,7 +345,11 @@ let willPlay = false;
     if (initial.length > 1) {
         player.feed(new encoding.format(initial));
     } else {
-        if (opts.Event) call(0);
+        if (initial instanceof NumericArrayObject) {
+            player.feed(initial.buffer);
+        } else {
+            if (opts.Event) call(0);
+        }
     }
   }
 
@@ -354,9 +358,9 @@ let willPlay = false;
   env.element.classList.add(...('sm-controls cursor-default rounded-md 0 py-1 px-2 bg-gray-100 text-left text-gray-500 ring-1 ring-inset ring-gray-400 text-xs'.split(' ')));
   
 
-  if (initial.length) {
+  if (initial.length || initial instanceof NumericArrayObject) {
     const uid = uuidv4();
-    const length = opts.FullLength || initial.length;
+    const length = opts.FullLength || initial.length || initial.buffer.length;
 
     let playClass = 'hidden', stopClass = '';
     if (!willPlay) {
@@ -383,7 +387,11 @@ V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-l
         playButton.classList.add('hidden');
         stopButton.classList.remove('hidden');
         env.local.state(true);
-        player.feed(new encoding.format(initial));
+        if (initial instanceof NumericArrayObject) {
+            player.feed(initial.buffer);
+        } else {
+            player.feed(new encoding.format(initial));
+        }
     });
 
     stopButton.addEventListener('click', () => {
@@ -448,7 +456,12 @@ V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-l
 core.PCMPlayer.update = async (args, env) => {
   const data = await interpretate(args[0], {...env, context: fast});
   env.local.state(true);
-  env.local.player.feed(new env.local.encoding(data));
+  if (data instanceof NumericArrayObject) {
+    env.local.player.feed(data.buffer);
+  } else {
+    env.local.player.feed(new env.local.encoding(data));
+  }
+  
 }
 
 core.PCMPlayer.destroy = (args, env) => {
