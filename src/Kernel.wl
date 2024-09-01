@@ -12,7 +12,9 @@ PCMPlayer::usage = "PCMPlayer[data_Offload, type_String, opts___] creates a stre
 
 System`AudioWrapperBox;
 System`AudioWrapper;
-AudioWrapper /: MakeBoxes[AudioWrapper[a_Audio], form_] := AudioWrapperBox[a, form];
+
+(* clean up meta, images and etc. it works incorrectly otherwise *)
+AudioWrapper /: MakeBoxes[AudioWrapper[a_Audio], form_] := AudioWrapperBox[Audio[a, MetaInformation-><||>], form];
 
 Begin["`Internal`"]
 
