@@ -25,11 +25,24 @@ Begin["`Internal`"]
 Audio /: Audio`AudioGUIDump`audioBoxes[a_Audio, audioID_ , appearance_, form_] := AudioWrapperBox[a, form]
 
 
+Unprotect[Sound`soundDisplay]
+ClearAll[Sound`soundDisplay]
 Unprotect[System`Dump`soundDisplay]
 ClearAll[System`Dump`soundDisplay]
+System`Dump`soundDisplay[s_]:=$Failed 
+Sound`soundDisplay[s_] := $Failed 
 
-System`Dump`soundDisplay[s_Sound] := With[{o = CreateFrontEndObject[s]},
-  o
+Unprotect[Sound]
+
+Sound /: MakeBoxes[s_Sound, form: StandardForm] := With[{
+  o = CreateFrontEndObject[s]
+},
+  If[ByteCount[s] < 1024,
+    ViewBox[s, o]
+  ,
+    MakeBoxes[o, form]
+  ]
+  
 ]
 
 System`WLXForm;
