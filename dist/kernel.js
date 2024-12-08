@@ -499,9 +499,12 @@ sound.SoundNote = async (args, env) => {
         if (typeof note == 'string') {
             if (!isCharDigit(note.charAt(note.length - 1))) note = note + '4';
         } else if (typeof note == 'number') {
-            //console.log(note);
+            
             //console.log((note) % halftonescale.length);
-            note = (halftonescale[Math.abs((note) % halftonescale.length)] + String(4 + Math.round((note - ((note) % halftonescale.length))/7.0)));
+            console.log(note);
+            console.log(note);
+            note = (halftonescale[Math.abs((note) % halftonescale.length)] + String(3 + Math.floor(note / 12.0)));
+            console.log();
             
             
         } else {
