@@ -554,14 +554,16 @@ sound.Sound = async (args, env) => {
         ...env, context:sound, Tone: Tone, hold: true
     });
   
-    env.element.classList.add(...('sm-controls cursor-default rounded-md 0 py-1 px-2 bg-gray-100 text-left text-gray-500 ring-1 ring-inset ring-gray-400 text-xs'.split(' ')));
+    if (env.element) {
+        env.element.classList.add(...('sm-controls cursor-default rounded-md 0 py-1 px-2 bg-gray-100 text-left text-gray-500 ring-1 ring-inset ring-gray-400 text-xs'.split(' ')));
   
-    env.element.innerHTML = `
+        env.element.innerHTML = `
          <svg class="w-4 h-4 text-gray-500 inline-block mt-auto mb-auto" viewBox="0 0 24 24" fill="none">
      <path class="group-hover:opacity-0" d="M3 11V13M6 10V14M9 11V13M12 9
   V15M15 6V18M18 10V14M21 11V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
      <path d="M3 11V13M6 8V16M9 10V14M12 7V17M15 4V20M18 9V15M21 11V13" class="opacity-0 group-hover:opacity-100" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
      </svg> <span class="leading-normal pl-1">${object.length} sec</span>`;
+    }
   
     //const targetRate = ctx.sampleRate;
     if (isAudioBuffer(object)) {
@@ -569,18 +571,21 @@ sound.Sound = async (args, env) => {
         player.fadeOut = 0.05;
         player.fadeIn = 0.01;
         // play as soon as the buffer is loaded
-        env.element.addEventListener('click', () => player.start());
+        if (env.element)
+            env.element.addEventListener('click', () => player.start());
+        else 
+            player.start();
 
         return;
     }
 
-    env.element.addEventListener('click', async () => {
+    const play = async () => {
         console.log('Play!');
 
         
-        if (!env.local.synth) env.local.synth = new Tone.PolySynth(Tone.Synth).toDestination();
-        env.local.synth.releaseAll();
-        const synth = env.local.synth;
+        if (!env.synth) env.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        env.synth.releaseAll();
+        const synth = env.synth;
 
         //const synth = new Tone.PolySynth(Tone.Synth).toDestination();
         const now = Tone.now();
@@ -598,14 +603,14 @@ sound.Sound = async (args, env) => {
       
             object({...env, context: sound});
         }
-    });
+    };
+
+    if (env.element)
+        env.element.addEventListener('click', play);
+    else 
+        play();
         
   }
-
-  sound.Sound.destroy = (args, env) => {
-    //env.local.player.destroy();
-  }
-  
   
   
   sound.SampledSoundList = async (args, env) => {
