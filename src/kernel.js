@@ -491,7 +491,7 @@ sound.SoundNote = async (args, env) => {
     //console.warn(notes);
 
     let duration = (await interpretate(args[1], env));
-    if (!duration) duration = '8n';    
+    if (!duration) duration = '4n';    
 
     const makeNote = (raw) => {
         let note = raw;
@@ -547,8 +547,11 @@ function isAudioBuffer (buffer) {
 	&& typeof buffer.duration === 'number'
 };
 
+let globalSynth;
+
 sound.Sound = async (args, env) => {  
     if (!Tone) Tone = (await import('tone'));
+    if (!globalSynth) globalSynth = new Tone.PolySynth(Tone.Synth, {polyphony:7}).toDestination(); 
 
     const object = await interpretate(args[0], {
         ...env, context:sound, Tone: Tone, hold: true
@@ -583,7 +586,9 @@ sound.Sound = async (args, env) => {
         console.log('Play!');
 
         
-        if (!env.synth) env.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        
+        env.synth = globalSynth;
+
         env.synth.releaseAll();
         const synth = env.synth;
 
