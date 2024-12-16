@@ -551,7 +551,7 @@ let globalSynth;
 
 sound.Sound = async (args, env) => {  
     if (!Tone) Tone = (await import('tone'));
-    if (!globalSynth) globalSynth = new Tone.PolySynth(Tone.Synth, {polyphony:7}).toDestination(); 
+    if (!globalSynth) globalSynth = new Tone.PolySynth(Tone.Synth).set({'volume': -8}).toDestination(); 
 
     const object = await interpretate(args[0], {
         ...env, context:sound, Tone: Tone, hold: true
