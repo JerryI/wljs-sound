@@ -100,7 +100,7 @@ AudioWrapperBox[a_Audio, form_] := With[{
 
     If[ByteCount[data] > 1.0 1024 1024,
         LeakyModule[{
-            chunks, index, Global`buffer, partLength,
+            chunks, index, System`buffer, partLength,
             skipNext = False
         },
             With[{parts = (ByteCount[data] / (1.0 1024 1024)) // Floor},
@@ -111,11 +111,11 @@ AudioWrapperBox[a_Audio, form_] := With[{
                 ]
             ];
 
-            AppendTo[garbage, Hold[Global`buffer] ];
+            AppendTo[garbage, Hold[System`buffer] ];
             
             index = partLength;
             chunks = data;
-            Global`buffer = Take[chunks, partLength];
+            System`buffer = NumericArray[Take[chunks, partLength], "Integer16"];
 
             EventHandler[uid, {"More" -> Function[Null, 
                 If[skipNext, skipNext = False; Return[] ];
@@ -125,10 +125,10 @@ AudioWrapperBox[a_Audio, form_] := With[{
                         index = 1;
                         skipNext = True;
                     ,
-                        Global`buffer = chunks[[index ;;  ]];
+                        System`buffer = NumericArray[chunks[[index ;;  ]], "Integer16"];
                     ]
                 ,
-                    Global`buffer = chunks[[index ;; index + partLength - 1 ]];
+                    System`buffer = NumericArray[chunks[[index ;; index + partLength - 1 ]], "Integer16"];
                     index = index + partLength;
                 ];
 
@@ -143,7 +143,7 @@ AudioWrapperBox[a_Audio, form_] := With[{
             ]  
             }];
 
-            With[{o = CreateFrontEndObject[PCMPlayer[Global`buffer // Offload, Global`buffer, "SignedInteger16", "AutoPlay"->False, "Event"->uid, "FullLength"->Length[chunks], SampleRate -> options[SampleRate] ] ]},
+            With[{o = CreateFrontEndObject[PCMPlayer[System`buffer // Offload, System`buffer, "SignedInteger16", "AutoPlay"->False, "Event"->uid, "FullLength"->Length[chunks], SampleRate -> options[SampleRate] ] ]},
                 MakeBoxes[o, form]
             ]  
         ]
@@ -168,7 +168,7 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
 
     If[ByteCount[data] > 1.0 1024 1024,
         LeakyModule[{
-            chunks, index, Global`buffer, partLength,
+            chunks, index, System`buffer, partLength,
             skipNext = False
         },
             With[{parts = (ByteCount[data] / (1.0 1024 1024)) // Floor},
@@ -179,11 +179,11 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
                 ]
             ];
 
-            AppendTo[garbage, Hold[Global`buffer] ];
+            AppendTo[garbage, Hold[System`buffer] ];
             
             index = partLength;
             chunks = data;
-            Global`buffer = Take[chunks, partLength];
+            System`buffer = NumericArray[Take[chunks, partLength], "Integer16"];
 
             EventHandler[uid, {"More" -> Function[Null, 
                 If[skipNext, skipNext = False; Return[] ];
@@ -193,10 +193,10 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
                         index = 1;
                         skipNext = True;
                     ,
-                        Global`buffer = chunks[[index ;;  ]];
+                        System`buffer = NumericArray[chunks[[index ;;  ]], "Integer16"];
                     ]
                 ,
-                    Global`buffer = chunks[[index ;; index + partLength - 1 ]];
+                    System`buffer = NumericArray[chunks[[index ;; index + partLength - 1 ]], "Integer16"];
                     index = index + partLength;
                 ];
 
@@ -217,8 +217,8 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
 
                         AppendTo[audioDumpTemporal, Hold[dump] ];
                         
-
-                        With[{result = With[{o = CreateFrontEndObject[PCMPlayer[Global`buffer // Offload, Global`buffer, "SignedInteger16", "AutoPlay"->False, "Event"->uid, "FullLength"->Length[chunks], SampleRate -> options[SampleRate] ] ]},
+                        
+                        With[{result = With[{o = CreateFrontEndObject[PCMPlayer[System`buffer // Offload, System`buffer, "SignedInteger16", "AutoPlay"->False, "DataOnKernel"->True, "Event"->uid, "FullLength"->Length[chunks], SampleRate -> options[SampleRate] ] ]},
                             RowBox[{"(*VB[*)(", ToString[dump, InputForm], ")(*,*)(*", ToString[Compress[Hold[o] ], InputForm], "*)(*]VB*)"}]
                         ] },
 
@@ -227,7 +227,7 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
                         ]                  
                     ]
                 ,
-                    With[{o = CreateFrontEndObject[PCMPlayer[Global`buffer // Offload, Global`buffer, "SignedInteger16", "AutoPlay"->False, "Event"->uid, "FullLength"->Length[chunks], SampleRate -> options[SampleRate] ] ]},
+                    With[{o = CreateFrontEndObject[PCMPlayer[System`buffer // Offload, System`buffer, "SignedInteger16", "AutoPlay"->False, "DataOnKernel"->True, "Event"->uid, "FullLength"->Length[chunks], SampleRate -> options[SampleRate] ] ]},
                         RowBox[{"(*VB[*)(", interpretation, ")(*,*)(*", ToString[Compress[Hold[o] ], InputForm], "*)(*]VB*)"}]
                     ]                  
                 ]
@@ -237,20 +237,18 @@ AudioWrapperBox[a_Audio, StandardForm] := With[{
     ,
 
         With[{interpretation = ToString[a, InputForm]},
-            If[StringLength[interpretation] > 5000 && True,
-                Module[{dump},
+            If[StringLength[interpretation] > 5000 || True,
+                Module[{},
 
-                    AppendTo[audioDumpTemporal, Hold[dump] ];
-                    
+                        With[{virtualBuffer = CreateFrontEndObject[data] },
+                            With[{result = With[{o = CreateFrontEndObject[PCMPlayer[virtualBuffer, "SignedInteger16", "AutoPlay"->False, SampleRate -> options[SampleRate] ] ]},
+                                RowBox[{"(*VB[*)(Audio[FrontEndRef[", ToString[virtualBuffer//First, InputForm], "], \"SignedInteger16\"])(*,*)(*", ToString[Compress[Hold[o] ], InputForm], "*)(*]VB*)"}]
+                            ] },
 
-                    With[{result = With[{o = CreateFrontEndObject[PCMPlayer[data, "SignedInteger16", "AutoPlay"->False, SampleRate -> options[SampleRate] ] ]},
-                        RowBox[{"(*VB[*)(", ToString[dump, InputForm], ")(*,*)(*", ToString[Compress[Hold[o] ], InputForm], "*)(*]VB*)"}]
-                    ]  },
-
-                        dump = a;
-                        result
-
-                    ]                
+                                
+                                result
+                            ]    
+                        ]                
                 ]
             ,
                 With[{o = CreateFrontEndObject[PCMPlayer[data, "SignedInteger16", "AutoPlay"->False, SampleRate -> options[SampleRate] ] ]},
