@@ -68,7 +68,7 @@ FUPCMPlayer.prototype.createContext = function() {
 
     // context needs to be resumed on iOS and Safari (or it will stay in "suspended" state)
     this.audioCtx.resume();
-    this.audioCtx.onstatechange = () => console.log('audioCtx.state', this.audioCtx.state);   // if you want to see "Running" state in console and be happy about it
+    this.audioCtx.onstatechange = () => {if (this.audioCtx) {console.log('audioCtx.state',  this.audioCtx.state)}};   // if you want to see "Running" state in console and be happy about it
     unlockAudioContext(this.audioCtx);
 
     this.gainNode = this.audioCtx.createGain();
@@ -309,6 +309,8 @@ core.PCMPlayer = async (args, env) => {
   if (!('GUI' in opts)) opts.GUI = true;
   if (!('SampleRate' in opts)) opts.SampleRate = 44100;
 
+  if (!env.element) opts.GUI = false;
+
   let encoding = rates[enc];
   console.warn(encoding);
 
@@ -324,15 +326,27 @@ core.PCMPlayer = async (args, env) => {
   }
 
   env.local.state = () => {};
+  let callbackOnEnd;
+
+  if (opts.AutoRemove) {
+    callbackOnEnd = () => {
+        console.warn('Autoremove!');
+        env.root.dispose();
+    }
+  } else {
+    callbackOnEnd = env.local.state
+  }
   
   var player = new FUPCMPlayer({
     encoding: encoding.type,
     channels: 1,
     sampleRate: opts.SampleRate || 44100,
     callback: call,
-    callbackOnEnd: (time) => env.local.state(time),
+    callbackOnEnd: (time) => callbackOnEnd(time),
     callbackTimeAhead: opts.TimeAhead || 200
  });
+
+
 
  env.local.encoding = encoding.format;
  env.local.player = player;
@@ -352,6 +366,8 @@ let willPlay = false;
         }
     }
   }
+
+
 
   if (opts.NoGUI) return; 
   if (!opts.GUI) return; 

@@ -13,7 +13,8 @@ PCMPlayer::usage = "PCMPlayer[data_Offload, type_String, opts___] creates a stre
 System`AudioWrapperBox;
 System`AudioWrapper;
 
-
+Unprotect[EmitSound]
+ClearAll[EmitSound]
 
 Unprotect[Audio`AudioGUIDump`audioBoxes]
 Unprotect[Audio]
@@ -21,6 +22,17 @@ ClearAll[Audio`AudioGUIDump`audioBoxes]
 
 
 Begin["`Internal`"]
+
+
+EmitSound[s_Sound, opts: OptionsPattern[] ] := With[{},
+    FrontSubmit[s, opts]
+]
+
+EmitSound[s_Audio, opts: OptionsPattern[] ] := With[{},
+    FrontSubmit[PCMPlayer[s, "AutoRemove"->True, "GUI"->False], opts]
+]
+
+Options[EmitSound] = {"Window" :> CurrentWindow[]}
 
 Audio /: Audio`AudioGUIDump`audioBoxes[a_Audio, audioID_ , appearance_, form_] := AudioWrapperBox[a, form]
 
@@ -64,11 +76,11 @@ extractChannelTyped[a_Audio, type_] := If[AudioChannels[a] > 1,
     AudioData[a, type] // First
 ]
 
-PCMPlayer[a_Audio] := With[{info = Information[a]},
+PCMPlayer[a_Audio, opts:OptionsPattern[] ] := With[{info = Information[a]},
     If[MemberQ[{"Real32", "Real64"}, info["DataType"] ],
-        PCMPlayer[extractChannelTyped[a, "SignedInteger16"], "SignedInteger16", SampleRate -> QuantityMagnitude[ info["SampleRate"] ] ]
+        PCMPlayer[extractChannelTyped[a, "SignedInteger16"], "SignedInteger16", SampleRate -> QuantityMagnitude[ info["SampleRate"] ], opts ]
     ,
-        PCMPlayer[extractChannelTyped[a, info["DataType"] ], info["DataType"], SampleRate -> QuantityMagnitude[ info["SampleRate"] ] ]
+        PCMPlayer[extractChannelTyped[a, info["DataType"] ], info["DataType"], SampleRate -> QuantityMagnitude[ info["SampleRate"] ], opts ]
     ]
 ]
 
@@ -86,6 +98,7 @@ Options[PCMPlayer] = {
     SampleRate -> 44100,
     "GUI" -> True,
     "TimeAhead" -> 200,
+    "AutoRemove" -> False,
     "FullLength" -> False
 }
 
