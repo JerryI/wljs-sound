@@ -111,7 +111,7 @@ AudioWrapperBox[a_Audio, form_] := With[{
 },
     AppendTo[garbage, Hold[a] ]; (* prvent form garbage collecting *)
 
-    If[ByteCount[data] > Internal`Kernel`$FrontEndObjectSizeLimit 1024 1024 / 8.0,
+    If[ByteCount[data] > Internal`Kernel`$FrontEndObjectSizeLimit 1024 1024 / 2.0,
         LeakyModule[{
             chunks, index, System`buffer, partLength,
             skipNext = False
