@@ -1,11 +1,11 @@
-BeginPackage["Notebook`Editor`Kernel`PCMAudio`", {
+BeginPackage["CoffeeLiqueur`Extensions`Sound`", {
     "JerryI`Misc`Language`",
     "JerryI`Misc`Events`",
     "JerryI`Misc`Events`Promise`",
     "JerryI`Misc`WLJS`Transport`",
-	"Notebook`Editor`Kernel`FrontSubmitService`",
-    "Notebook`Editor`FrontendObject`",
-    "Notebook`Editor`Kernel`FrontSubmitService`MetaMarkers`"    
+	"CoffeeLiqueur`Extensions`Communication`",
+    "CoffeeLiqueur`Extensions`FrontendObject`",
+    "CoffeeLiqueur`Extensions`MetaMarkers`"    
 }]
 
 PCMPlayer::usage = "PCMPlayer[data_Offload, type_String, opts___] creates a streaming PCM player"
